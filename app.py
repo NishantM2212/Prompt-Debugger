@@ -117,7 +117,7 @@ Provide your output in a JSON format with the following keys:
             return {}
 
 def main():
-    st.title("Prompt Debugger using Cursor AI")
+    st.title("Prompt Debugger using")
     
     debugger = PromptDebugger()
     
