@@ -557,7 +557,11 @@ def main():
                                 <h5 style='color: #f8f9fa;'>System Prompt</h5>
                                 <div style='padding-left: 1rem;'>
                             """, unsafe_allow_html=True)
-                            st.info(analysis.get("error_source_analysis", {}).get("system_prompt_error", "No issues found"))
+                            error_analysis = analysis.get("error_source_analysis", {}) if isinstance(analysis, dict) else {}
+                            if isinstance(error_analysis, str):
+                                st.info(error_analysis)
+                            else:
+                                st.info(error_analysis.get("system_prompt_error", "No issues found"))
                             st.markdown("</div></div>", unsafe_allow_html=True)
                         
                         with col_guide:
@@ -566,7 +570,7 @@ def main():
                             <h5 style='color: #f8f9fa;'>Behavioral Guidelines</h5>
                                 <div style='border-left: 4px solid #FF4B4B; padding-left: 1rem;'>
                             """, unsafe_allow_html=True)
-                            st.info(analysis.get("error_source_analysis", {}).get("behavioral_guidelines_error", "No issues found"))
+                            st.info(error_analysis.get("behavioral_guidelines_error", "No issues found"))
                             st.markdown("</div></div>", unsafe_allow_html=True)
                         
                         # Add spacing
@@ -581,13 +585,15 @@ def main():
                         # Create two columns for system prompt and behavioral guidelines
                         sys_col, guide_col = st.columns(2)
                         
+                        suggestions = analysis.get("prompt_suggestions", {}) if isinstance(analysis, dict) else {}
+                        
                         with sys_col:
                             st.markdown("""
                             <div style='padding: 1rem; border-radius: 10px; height: 100%;'>
                                 <h5 style='color: #f8f9fa;'>System Prompt Modifications</h5>
                             """, unsafe_allow_html=True)
                             
-                            prompt_mods = analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", {})
+                            prompt_mods = suggestions.get("system_prompt_modifications", {})
                             if isinstance(prompt_mods, dict) and prompt_mods.get("original_text"):
                                 st.info(prompt_mods.get("explanation", ""))
                                 st.error("Text to Replace:")
@@ -604,7 +610,7 @@ def main():
                                 <h5 style='color: #f8f9fa;'>Behavioral Guidelines Modifications</h5>
                             """, unsafe_allow_html=True)
                             
-                            guide_mods = analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", {})
+                            guide_mods = suggestions.get("behavioral_guidelines_modifications", {})
                             if isinstance(guide_mods, dict) and guide_mods.get("original_text"):
                                 st.info(guide_mods.get("explanation", ""))
                                 st.error("Text to Replace:")
@@ -622,9 +628,8 @@ def main():
                         <div style='padding: 1.5rem; padding-left: 0; border-radius: 10px; '>
                             <h4 style='color: #f8f9fa;'>🤔 Interpretation Analysis</h4>                
                         """, unsafe_allow_html=True)
-                        st.warning(analysis.get("agent_interpretation_change", "No changes in interpretation"))
+                        st.warning(analysis.get("agent_interpretation_change", "No changes in interpretation") if isinstance(analysis, dict) else "No changes in interpretation")
                         st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
