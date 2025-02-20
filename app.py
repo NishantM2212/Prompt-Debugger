@@ -23,9 +23,14 @@ st.markdown("""
         border-radius: 5px;
         padding: 0.5rem 1rem;
         margin-top: 2rem;
+        transition: all 0.3s ease;
     }
     .stButton button:hover {
-        background-color: #FF2B2B;
+        background-color: #4CAF50;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2);
+        color: white;
+        font-weight: 600;
     }
     .stTextArea textarea {
         border-radius: 5px;
@@ -304,57 +309,57 @@ def main():
                 help="What should the agent have done",
                 placeholder="Describe the desired behavior..."
             )
-        
-        # Analysis button with custom styling
-        if st.button("🔍 Analyze Prompt", help="Click to analyze the prompt and get suggestions"):
-            if not all([
-                system_prompt, defective_user_message, defective_agent_response,
-                defective_description, agent_interpretation, expected_behavior,
-                behavioral_guidelines
-            ]):
-                st.warning("⚠️ Please fill in all required fields before analyzing.")
-            else:
-                with st.spinner("🔄 Analyzing prompt and generating suggestions..."):
-                    analysis = debugger.analyze_prompt(
-                        bot_type,
-                        system_prompt,
-                        conversation_history,
-                        defective_user_message,
-                        defective_agent_response,
-                        defective_description,
-                        agent_interpretation,
-                        expected_behavior,
-                        behavioral_guidelines,
-                        provider,
-                        model
-                    )
-                
-                if analysis:
-                    st.success("✅ Analysis Complete!")
+            
+            # Analysis button moved to tab3
+            if st.button("🔍 Analyze Prompt", help="Click to analyze the prompt and get suggestions"):
+                if not all([
+                    system_prompt, defective_user_message, defective_agent_response,
+                    defective_description, agent_interpretation, expected_behavior,
+                    behavioral_guidelines
+                ]):
+                    st.warning("⚠️ Please fill in all required fields before analyzing.")
+                else:
+                    with st.spinner("🔄 Analyzing prompt and generating suggestions..."):
+                        analysis = debugger.analyze_prompt(
+                            bot_type,
+                            system_prompt,
+                            conversation_history,
+                            defective_user_message,
+                            defective_agent_response,
+                            defective_description,
+                            agent_interpretation,
+                            expected_behavior,
+                            behavioral_guidelines,
+                            provider,
+                            model
+                        )
                     
-                    # Display results in an organized way
-                    st.markdown("### 📊 Analysis Results")
-                    
-                    # Create three columns for the results
-                    col_error, col_suggest, col_interpret = st.columns(3)
-                    
-                    with col_error:
-                        st.markdown("#### 🔍 Error Sources")
-                        st.markdown("**System Prompt:**")
-                        st.info(analysis.get("error_source_analysis", {}).get("system_prompt_error", "No issues found"))
-                        st.markdown("**Guidelines:**")
-                        st.info(analysis.get("error_source_analysis", {}).get("behavioral_guidelines_error", "No issues found"))
-                    
-                    with col_suggest:
-                        st.markdown("#### 💡 Suggestions")
-                        st.markdown("**System Prompt:**")
-                        st.success(analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", "No modifications needed"))
-                        st.markdown("**Guidelines:**")
-                        st.success(analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", "No modifications needed"))
-                    
-                    with col_interpret:
-                        st.markdown("#### 🤔 Interpretation Changes")
-                        st.warning(analysis.get("agent_interpretation_change", "No changes in interpretation"))
+                    if analysis:
+                        st.success("✅ Analysis Complete!")
+                        
+                        # Display results in an organized way
+                        st.markdown("### 📊 Analysis Results")
+                        
+                        # Create three columns for the results
+                        col_error, col_suggest, col_interpret = st.columns(3)
+                        
+                        with col_error:
+                            st.markdown("#### 🔍 Error Sources")
+                            st.markdown("**System Prompt:**")
+                            st.info(analysis.get("error_source_analysis", {}).get("system_prompt_error", "No issues found"))
+                            st.markdown("**Guidelines:**")
+                            st.info(analysis.get("error_source_analysis", {}).get("behavioral_guidelines_error", "No issues found"))
+                        
+                        with col_suggest:
+                            st.markdown("#### 💡 Suggestions")
+                            st.markdown("**System Prompt:**")
+                            st.success(analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", "No modifications needed"))
+                            st.markdown("**Guidelines:**")
+                            st.success(analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", "No modifications needed"))
+                        
+                        with col_interpret:
+                            st.markdown("#### 🤔 Interpretation Changes")
+                            st.warning(analysis.get("agent_interpretation_change", "No changes in interpretation"))
 
 if __name__ == "__main__":
     main()
