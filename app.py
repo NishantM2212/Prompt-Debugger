@@ -3,6 +3,73 @@ import json
 import anthropic
 import openai
 
+# Custom CSS for better styling
+st.set_page_config(
+    page_title="AI Prompt Debugger",
+    page_icon="🔍",
+    layout="wide"
+)
+
+# Custom CSS
+st.markdown("""
+<style>
+    .main {
+        padding: 2rem;
+    }
+    .stButton button {
+        width: 100%;
+        background-color: #FF4B4B;
+        color: white;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        margin-top: 2rem;
+    }
+    .stButton button:hover {
+        background-color: #FF2B2B;
+    }
+    .stTextArea textarea {
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    .stTextArea textarea:focus {
+        border-color: #FF4B4B;
+        box-shadow: 0 0 0 1px #FF4B4B;
+    }
+    .sidebar .element-container {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+    h1 {
+        color: #FF4B4B;
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    h2 {
+        color: #2c3e50;
+        font-size: 1.8rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+    h3 {
+        color: #34495e;
+        font-size: 1.4rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.8rem;
+    }
+    .stMarkdown {
+        padding: 0.5rem 0;
+    }
+    .help-text {
+        color: #666;
+        font-size: 0.9rem;
+        font-style: italic;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 class PromptDebugger:
     def __init__(self):
         # Initialize API clients with keys from st.secrets
@@ -117,119 +184,177 @@ Provide your output in a JSON format with the following keys:
             return {}
 
 def main():
-    st.title("Prompt Debugger using")
+    st.title("🔍 AI Prompt Debugger")
     
     debugger = PromptDebugger()
     
-    # Sidebar configuration: Bot type and model selection.
-    st.sidebar.header("Configuration")
-    bot_type = st.sidebar.selectbox("Select Bot Type", ["Text Bot", "Voice Bot"])
+    # Create two columns for the main layout
+    col1, col2 = st.columns([1, 3])
     
-    provider = st.sidebar.selectbox(
-        "Select Model Provider",
-        options=list(debugger.model_providers.keys())
-    )
+    # Sidebar configuration in the first column
+    with col1:
+        st.markdown("### ⚙️ Configuration")
+        st.markdown("---")
+        
+        bot_type = st.selectbox(
+            "🤖 Select Bot Type",
+            ["Text Bot", "Voice Bot"],
+            help="Choose the type of bot you're debugging"
+        )
+        
+        provider = st.selectbox(
+            "🏢 Model Provider",
+            options=list(debugger.model_providers.keys()),
+            help="Select the AI model provider"
+        )
+        
+        model = st.selectbox(
+            "🧠 Model",
+            options=list(debugger.model_providers[provider].keys()),
+            format_func=lambda x: debugger.model_providers[provider][x],
+            help="Choose the specific model version"
+        )
     
-    model = st.sidebar.selectbox(
-        "Select Model",
-        options=list(debugger.model_providers[provider].keys()),
-        format_func=lambda x: debugger.model_providers[provider][x]
-    )
-    
-    st.header("Input Fields for Prompt Debugging")
-    
-    # 1. System Prompt
-    st.subheader("1. System Prompt")
-    system_prompt = st.text_area("Enter the System Prompt given to the agent", height=150)
-    
-    # 2. Conversational History
-    st.subheader("2. Conversational History")
-    num_exchanges = st.number_input("Number of conversation exchanges", min_value=1, value=1)
-    conversation_history = []
-    for i in range(num_exchanges):
-        st.markdown(f"**Exchange {i+1}**")
-        user_msg = st.text_area(f"User Message {i+1}", key=f"user_{i}")
-        agent_msg = st.text_area(f"Agent Response {i+1}", key=f"agent_{i}")
-        if user_msg:
-            conversation_history.append({"role": "user", "content": user_msg})
-        if agent_msg:
-            conversation_history.append({"role": "assistant", "content": agent_msg})
-    
-    # 3. Defective Interaction (User and Agent responses)
-    st.subheader("3. Defective Interaction")
-    defective_user_message = st.text_area("Defective User Message", help="The user message in the interaction that produced a defective response")
-    defective_agent_response = st.text_area("Defective Agent Response", help="The agent response that is defective")
-    
-    # 4. Description of the Defective Response
-    st.subheader("4. Description of the Defective Response")
-    defective_description = st.text_area("Describe what is wrong with the agent's response", help="Explain why the agent’s response is considered defective")
-    
-    # 5. Agent's Interpretation
-    st.subheader("5. Agent's Interpretation of the Prompt")
-    agent_interpretation = st.text_area("What did the agent interpret from the prompt?", help="Include the agent’s understanding of its instruction")
-    
-    # 6. Expected Behavior
-    st.subheader("6. Expected Behavior")
-    expected_behavior = st.text_area("Describe the expected behavior of the bot", help="Explain how you expected the agent to behave")
-    
-    # 7. Behavioral Guidelines
-    st.subheader("7. Behavioral Guidelines")
-    behavioral_guidelines = st.text_area("Enter the Behavioral Guidelines provided to the agent", height=150, help="These are the foundational guidelines given to the agent during its build")
-    
-    if st.button("Analyze"):
-        # Validate required fields
-        if not all([
-            system_prompt, defective_user_message, defective_agent_response,
-            defective_description, agent_interpretation, expected_behavior, behavioral_guidelines
-        ]):
-            st.warning("Please fill in all required fields before analyzing.")
-        else:
-            with st.spinner("Analyzing prompt and generating suggestions..."):
-                analysis = debugger.analyze_prompt(
-                    bot_type,
-                    system_prompt,
-                    conversation_history,
-                    defective_user_message,
-                    defective_agent_response,
-                    defective_description,
-                    agent_interpretation,
-                    expected_behavior,
-                    behavioral_guidelines,
-                    provider,
-                    model
-                )
+    # Main content in the second column
+    with col2:
+        st.markdown("### 📝 Input Fields")
+        
+        # Create tabs for better organization
+        tab1, tab2, tab3 = st.tabs(["System", "Interaction", "Behaviour"])
+        
+        with tab1:
+            st.subheader("System Prompt")
+            system_prompt = st.text_area(
+                "Enter the System Prompt",
+                height=150,
+                help="The initial instructions given to the agent",
+                placeholder="Enter the system prompt that defines the agent's behavior..."
+            )
             
-            if analysis:
-                st.header("Analysis Results")
+            st.subheader("Behavioral Guidelines")
+            behavioral_guidelines = st.text_area(
+                "Enter Behavioral Guidelines",
+                height=150,
+                help="The foundational guidelines given to the agent",
+                placeholder="Enter any specific behavioral guidelines or constraints..."
+            )
+        
+        with tab2:
+            st.subheader("Conversation History")
+            num_exchanges = st.number_input(
+                "Number of exchanges",
+                min_value=1,
+                value=1,
+                help="How many back-and-forth messages to include"
+            )
+            
+            conversation_history = []
+            for i in range(num_exchanges):
+                st.markdown(f"**Exchange {i+1}**")
+                col_user, col_agent = st.columns(2)
                 
-                # Output field 1: Location of Error Source
-                st.subheader("1. Location of Error Source")
-                system_prompt_error = analysis.get("error_source_analysis", {}).get("system_prompt_error", "No issues found in System Prompt.")
-                behavioral_guidelines_error = analysis.get("error_source_analysis", {}).get("behavioral_guidelines_error", "No issues found in Behavioral Guidelines.")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown("**System Prompt Error:**")
-                    st.text_area("", value=system_prompt_error, height=120)
-                with col2:
-                    st.markdown("**Behavioral Guidelines Error:**")
-                    st.text_area("", value=behavioral_guidelines_error, height=120)
+                with col_user:
+                    user_msg = st.text_area(
+                        "User Message",
+                        key=f"user_{i}",
+                        placeholder="What the user said..."
+                    )
                 
-                # Output field 2: Prompt Suggestions
-                st.subheader("2. Prompt Suggestions")
-                system_prompt_modifications = analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", "No modifications suggested for System Prompt.")
-                behavioral_guidelines_modifications = analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", "No modifications suggested for Behavioral Guidelines.")
-                col3, col4 = st.columns(2)
-                with col3:
-                    st.markdown("**System Prompt Modifications:**")
-                    st.text_area("", value=system_prompt_modifications, height=120)
-                with col4:
-                    st.markdown("**Behavioral Guidelines Modifications:**")
-                    st.text_area("", value=behavioral_guidelines_modifications, height=120)
+                with col_agent:
+                    agent_msg = st.text_area(
+                        "Agent Response",
+                        key=f"agent_{i}",
+                        placeholder="How the agent responded..."
+                    )
                 
-                # Output field 3: Agent Interpretation Change
-                st.subheader("3. Agent Interpretation Change")
-                interpretation_change = analysis.get("agent_interpretation_change", "No changes in agent interpretation provided.")
-                st.text_area("", value=interpretation_change, height=120)
+                if user_msg:
+                    conversation_history.append({"role": "user", "content": user_msg})
+                if agent_msg:
+                    conversation_history.append({"role": "assistant", "content": agent_msg})
+        
+        with tab3:
+            st.subheader("Defective Interaction")
+            defective_user_message = st.text_area(
+                "User Message",
+                help="The user message that led to the defective response",
+                placeholder="Enter the user message that caused issues..."
+            )
+            
+            defective_agent_response = st.text_area(
+                "Defective Agent Response",
+                help="The problematic response from the agent",
+                placeholder="Enter the agent's problematic response..."
+            )
+            
+            st.subheader("Agent Logs")
+            defective_description = st.text_area(
+                "Description of defective behaviour",
+                help="Explain what went wrong with the agent's response",
+                placeholder="Describe why the response was problematic..."
+            )
+            
+            agent_interpretation = st.text_area(
+                "Agent Reasoning",
+                help="How did the agent understand its instructions",
+                placeholder="Explain how the agent interpreted the prompt..."
+            )
+            
+            expected_behavior = st.text_area(
+                "Expected Behavior",
+                help="What should the agent have done",
+                placeholder="Describe the desired behavior..."
+            )
+        
+        # Analysis button with custom styling
+        if st.button("🔍 Analyze Prompt", help="Click to analyze the prompt and get suggestions"):
+            if not all([
+                system_prompt, defective_user_message, defective_agent_response,
+                defective_description, agent_interpretation, expected_behavior,
+                behavioral_guidelines
+            ]):
+                st.warning("⚠️ Please fill in all required fields before analyzing.")
+            else:
+                with st.spinner("🔄 Analyzing prompt and generating suggestions..."):
+                    analysis = debugger.analyze_prompt(
+                        bot_type,
+                        system_prompt,
+                        conversation_history,
+                        defective_user_message,
+                        defective_agent_response,
+                        defective_description,
+                        agent_interpretation,
+                        expected_behavior,
+                        behavioral_guidelines,
+                        provider,
+                        model
+                    )
+                
+                if analysis:
+                    st.success("✅ Analysis Complete!")
+                    
+                    # Display results in an organized way
+                    st.markdown("### 📊 Analysis Results")
+                    
+                    # Create three columns for the results
+                    col_error, col_suggest, col_interpret = st.columns(3)
+                    
+                    with col_error:
+                        st.markdown("#### 🔍 Error Sources")
+                        st.markdown("**System Prompt:**")
+                        st.info(analysis.get("error_source_analysis", {}).get("system_prompt_error", "No issues found"))
+                        st.markdown("**Guidelines:**")
+                        st.info(analysis.get("error_source_analysis", {}).get("behavioral_guidelines_error", "No issues found"))
+                    
+                    with col_suggest:
+                        st.markdown("#### 💡 Suggestions")
+                        st.markdown("**System Prompt:**")
+                        st.success(analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", "No modifications needed"))
+                        st.markdown("**Guidelines:**")
+                        st.success(analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", "No modifications needed"))
+                    
+                    with col_interpret:
+                        st.markdown("#### 🤔 Interpretation Changes")
+                        st.warning(analysis.get("agent_interpretation_change", "No changes in interpretation"))
 
 if __name__ == "__main__":
     main()
