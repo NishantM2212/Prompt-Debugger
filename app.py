@@ -4,6 +4,7 @@ import anthropic
 import openai
 from datetime import datetime
 import os
+import pytz
 
 # Custom CSS for better styling
 st.set_page_config(
@@ -153,13 +154,25 @@ Analyze the above information and provide your analysis in the following JSON fo
         "behavioral_guidelines_error": "Detailed explanation of errors in the behavioral guidelines (if any)"
     }},
     "prompt_suggestions": {{
-        "system_prompt_modifications": "Suggested changes for the system prompt (if applicable)",
-        "behavioral_guidelines_modifications": "Suggested changes for the behavioral guidelines (if applicable)"
+        "system_prompt_modifications": {{
+            "explanation": "Explanation of why these changes are needed",
+            "original_text": "The part of the system prompt that needs to be replaced",
+            "replacement_text": "The exact text to use as replacement"
+        }},
+        "behavioral_guidelines_modifications": {{
+            "explanation": "Explanation of why these changes are needed",
+            "original_text": "The part of the behavioral guidelines that needs to be replaced",
+            "replacement_text": "The exact text to use as replacement"
+        }}
     }},
     "agent_interpretation_change": "Explanation of how the agent's reasoning changes relative to its previous interpretation"
 }}
 
-Important: Ensure your response is in valid JSON format with proper escaping of special characters.
+Important: 
+1. For both system_prompt_modifications and behavioral_guidelines_modifications, provide the exact text that needs to be replaced and its replacement.
+2. If multiple parts need to be replaced, combine them into a single replacement operation.
+3. If no modifications are needed, set both original_text and replacement_text to empty strings.
+4. Ensure your response is in valid JSON format with proper escaping of special characters.
 """
             if provider == "Anthropic":
                 # Modify the prompt to explicitly request JSON
@@ -488,7 +501,7 @@ def main():
                 else:
                     # Save current inputs to history before analysis
                     current_inputs = {
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "timestamp": datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%Y-%m-%d %H:%M:%S %Z"),
                         "bot_type": bot_type,
                         "provider": provider,
                         "model": model,
@@ -565,15 +578,44 @@ def main():
                             <h4 style='color: #f8f9fa; margin-bottom: 1rem;'>💡 Improvement Suggestions</h4>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown("**System Prompt Modifications:**")
-                        st.success(analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", "No modifications needed"))
+                        # Create two columns for system prompt and behavioral guidelines
+                        sys_col, guide_col = st.columns(2)
                         
-                        st.markdown("*Behavioral Guidelines Modifications:*", unsafe_allow_html=True)
-                        st.success(analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", "No modifications needed"))
+                        with sys_col:
+                            st.markdown("""
+                            <div style='padding: 1rem; border-radius: 10px; height: 100%;'>
+                                <h5 style='color: #f8f9fa;'>System Prompt Modifications</h5>
+                            """, unsafe_allow_html=True)
+                            
+                            prompt_mods = analysis.get("prompt_suggestions", {}).get("system_prompt_modifications", {})
+                            if isinstance(prompt_mods, dict) and prompt_mods.get("original_text"):
+                                st.info(prompt_mods.get("explanation", ""))
+                                st.error("Text to Replace:")
+                                st.code(prompt_mods.get("original_text", ""))
+                                st.success("Replacement Text:")
+                                st.code(prompt_mods.get("replacement_text", ""))
+                            else:
+                                st.success("No modifications needed")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        
+                        with guide_col:
+                            st.markdown("""
+                            <div style='padding: 1rem; border-radius: 10px; height: 100%;'>
+                                <h5 style='color: #f8f9fa;'>Behavioral Guidelines Modifications</h5>
+                            """, unsafe_allow_html=True)
+                            
+                            guide_mods = analysis.get("prompt_suggestions", {}).get("behavioral_guidelines_modifications", {})
+                            if isinstance(guide_mods, dict) and guide_mods.get("original_text"):
+                                st.info(guide_mods.get("explanation", ""))
+                                st.error("Text to Replace:")
+                                st.code(guide_mods.get("original_text", ""))
+                                st.success("Replacement Text:")
+                                st.code(guide_mods.get("replacement_text", ""))
+                            else:
+                                st.success("No modifications needed")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        
                         st.markdown("</div>", unsafe_allow_html=True)
-                        
-                        # Add spacing
-                        st.markdown("<br>", unsafe_allow_html=True)
                         
                         # Third section: Interpretation Changes (vertical)
                         st.markdown("""
@@ -585,3 +627,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
