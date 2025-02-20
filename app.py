@@ -3,6 +3,7 @@ import json
 import anthropic
 import openai
 from datetime import datetime
+import os
 
 # Custom CSS for better styling
 st.set_page_config(
@@ -245,14 +246,47 @@ Do not include any explanatory text or markdown formatting. Respond only with th
                 "agent_interpretation_change": "Analysis interrupted due to an error."
             }
 
+# Function to load history from file
+def load_history():
+    try:
+        if os.path.exists('analysis_history.json'):
+            with open('analysis_history.json', 'r') as f:
+                history = json.load(f)
+                if not isinstance(history, list):
+                    return []
+                return history
+    except Exception as e:
+        st.error(f"Error loading history: {e}")
+    return []
+
+# Function to save history to file
+def save_history(history):
+    try:
+        with open('analysis_history.json', 'w') as f:
+            json.dump(history, f, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"Error saving history: {e}")
+        return False
+
 def main():
     st.title("🔍 AI Prompt Debugger")
     
-    # Initialize session state for analysis history
+    # Initialize session state for analysis history from file
     if "analysis_history" not in st.session_state:
-        st.session_state.analysis_history = []
+        st.session_state.analysis_history = load_history()
     
     debugger = PromptDebugger()
+    
+    # Initialize default values for form fields
+    system_prompt = ""
+    behavioral_guidelines = ""
+    conversation_history = []
+    defective_user_message = ""
+    defective_agent_response = ""
+    defective_description = ""
+    agent_interpretation = ""
+    expected_behavior = ""
     
     # Create two columns for the main layout
     col1, col2 = st.columns([1, 3])
@@ -293,8 +327,33 @@ def main():
                     st.markdown("**Model:** " + history_item['model'])
                     
                     if st.button("Load Inputs", key=f"load_{idx}"):
-                        # Store the selected history item in session state
-                        st.session_state.selected_history = history_item
+                        # Load values from history item
+                        system_prompt = history_item['system_prompt']
+                        behavioral_guidelines = history_item['behavioral_guidelines']
+                        conversation_history = history_item['conversation_history']
+                        defective_user_message = history_item['defective_user_message']
+                        defective_agent_response = history_item['defective_agent_response']
+                        defective_description = history_item['defective_description']
+                        agent_interpretation = history_item['agent_interpretation']
+                        expected_behavior = history_item['expected_behavior']
+                        bot_type = history_item['bot_type']
+                        provider = history_item['provider']
+                        model = history_item['model']
+                        
+                        # Store in session state
+                        st.session_state.update({
+                            'system_prompt': system_prompt,
+                            'behavioral_guidelines': behavioral_guidelines,
+                            'conversation_history': conversation_history,
+                            'defective_user_message': defective_user_message,
+                            'defective_agent_response': defective_agent_response,
+                            'defective_description': defective_description,
+                            'agent_interpretation': agent_interpretation,
+                            'expected_behavior': expected_behavior,
+                            'bot_type': bot_type,
+                            'provider': provider,
+                            'model': model
+                        })
                         st.rerun()
         else:
             st.info("No analysis history available")
@@ -302,31 +361,14 @@ def main():
         # Add clear history button
         if len(st.session_state.analysis_history) > 0:
             if st.button("🗑️ Clear History"):
-                st.session_state.analysis_history = []
-                st.rerun()
+                if save_history([]):
+                    st.session_state.analysis_history = []
+                    st.success("History cleared successfully!")
+                    st.rerun()
     
     # Main content in the second column
     with col2:
         st.markdown("### 📝 Input Fields")
-        
-        # Load historical inputs if selected
-        if "selected_history" in st.session_state:
-            history_item = st.session_state.selected_history
-            # Clear the selection after loading
-            del st.session_state.selected_history
-            
-            # Pre-fill the form fields
-            bot_type = history_item['bot_type']
-            provider = history_item['provider']
-            model = history_item['model']
-            system_prompt = history_item['system_prompt']
-            behavioral_guidelines = history_item['behavioral_guidelines']
-            conversation_history = history_item['conversation_history']
-            defective_user_message = history_item['defective_user_message']
-            defective_agent_response = history_item['defective_agent_response']
-            defective_description = history_item['defective_description']
-            agent_interpretation = history_item['agent_interpretation']
-            expected_behavior = history_item['expected_behavior']
         
         # Create tabs for better organization
         tab1, tab2, tab3 = st.tabs(["System", "Interaction", "Behaviour"])
@@ -335,7 +377,7 @@ def main():
             st.subheader("System Prompt")
             system_prompt = st.text_area(
                 "Enter the System Prompt",
-                value=system_prompt if "selected_history" in st.session_state else "",
+                value=st.session_state.get('system_prompt', ''),
                 height=150,
                 help="The initial instructions given to the agent",
                 placeholder="Enter the system prompt that defines the agent's behavior..."
@@ -344,7 +386,7 @@ def main():
             st.subheader("Behavioral Guidelines")
             behavioral_guidelines = st.text_area(
                 "Enter Behavioral Guidelines",
-                value=behavioral_guidelines if "selected_history" in st.session_state else "",
+                value=st.session_state.get('behavioral_guidelines', ''),
                 height=150,
                 help="The foundational guidelines given to the agent",
                 placeholder="Enter any specific behavioral guidelines or constraints..."
@@ -353,7 +395,8 @@ def main():
         with tab2:
             st.subheader("Conversation History")
             # If loading from history, set the number of exchanges based on the history
-            initial_exchanges = len(conversation_history) // 2 if "selected_history" in st.session_state else 1
+            conversation_history = st.session_state.get('conversation_history', [])
+            initial_exchanges = len(conversation_history) // 2 if conversation_history else 1
             num_exchanges = st.number_input(
                 "Number of exchanges",
                 min_value=1,
@@ -369,10 +412,11 @@ def main():
                 # Get historical messages if available
                 historical_user_msg = ""
                 historical_agent_msg = ""
-                if "selected_history" in st.session_state and i * 2 < len(history_item['conversation_history']):
-                    historical_user_msg = history_item['conversation_history'][i * 2]['content']
-                    if i * 2 + 1 < len(history_item['conversation_history']):
-                        historical_agent_msg = history_item['conversation_history'][i * 2 + 1]['content']
+                stored_history = st.session_state.get('conversation_history', [])
+                if i * 2 < len(stored_history):
+                    historical_user_msg = stored_history[i * 2]['content']
+                    if i * 2 + 1 < len(stored_history):
+                        historical_agent_msg = stored_history[i * 2 + 1]['content']
                 
                 with col_user:
                     user_msg = st.text_area(
@@ -399,14 +443,14 @@ def main():
             st.subheader("Defective Interaction")
             defective_user_message = st.text_area(
                 "User Message",
-                value=defective_user_message if "selected_history" in st.session_state else "",
+                value=st.session_state.get('defective_user_message', ''),
                 help="The user message that led to the defective response",
                 placeholder="Enter the user message that caused issues..."
             )
             
             defective_agent_response = st.text_area(
                 "Defective Agent Response",
-                value=defective_agent_response if "selected_history" in st.session_state else "",
+                value=st.session_state.get('defective_agent_response', ''),
                 help="The problematic response from the agent",
                 placeholder="Enter the agent's problematic response..."
             )
@@ -414,21 +458,21 @@ def main():
             st.subheader("Agent Logs")
             defective_description = st.text_area(
                 "Description of defective behaviour",
-                value=defective_description if "selected_history" in st.session_state else "",
+                value=st.session_state.get('defective_description', ''),
                 help="Explain what went wrong with the agent's response",
                 placeholder="Describe why the response was problematic..."
             )
             
             agent_interpretation = st.text_area(
                 "Agent Reasoning",
-                value=agent_interpretation if "selected_history" in st.session_state else "",
+                value=st.session_state.get('agent_interpretation', ''),
                 help="How did the agent understand its instructions",
                 placeholder="Explain how the agent interpreted the prompt..."
             )
             
             expected_behavior = st.text_area(
                 "Expected Behavior",
-                value=expected_behavior if "selected_history" in st.session_state else "",
+                value=st.session_state.get('expected_behavior', ''),
                 help="What should the agent have done",
                 placeholder="Describe the desired behavior..."
             )
@@ -461,6 +505,9 @@ def main():
                     # Add to history if not already present
                     if current_inputs not in st.session_state.analysis_history:
                         st.session_state.analysis_history.append(current_inputs)
+                        # Save history to file
+                        if save_history(st.session_state.analysis_history):
+                            st.success("Analysis saved to history!")
                     
                     with st.spinner("🔄 Analyzing prompt and generating suggestions..."):
                         analysis = debugger.analyze_prompt(
